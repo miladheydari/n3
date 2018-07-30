@@ -14,6 +14,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.MediaStore
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Environment
 import android.support.v4.app.ActivityCompat
 import android.util.TypedValue
@@ -24,6 +25,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 import android.provider.MediaStore.Images.Media.getBitmap
 import android.graphics.drawable.BitmapDrawable
+import android.util.Log
+import ir.tapsell.sdk.*
 import java.io.OutputStream
 
 
@@ -39,6 +42,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private var mCropImageUri: Uri? = null
 
+    private var tapsellAd: TapsellAd? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +57,59 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         linearLayout = findViewById(R.id.ll)
         btnGetImage.setOnClickListener(this)
 
+        Tapsell.setRewardListener { tapsellAd, b ->
+            if (b) {
+                imgList.reverse()
+
+                val current = System.currentTimeMillis()
+                imgList.forEachIndexed { index, bitmap -> saveBitmap(bitmap, String.format("$current-%02d.png", index)) }
+
+            } else {
+                Toast.makeText(this@MainActivity, "عکس ها ذخیره نشد", Toast.LENGTH_LONG).show()
+            }
+
+
+        }
+
+    }
+
+    private fun requestAd(zoneId: String, cacheType: Int) {
+        Tapsell.requestAd(this, zoneId,
+                TapsellAdRequestOptions(cacheType),
+                object : TapsellAdRequestListener {
+                    override fun onAdAvailable(p0: TapsellAd?) {
+                        tapsellAd = p0
+
+                        if (CropImage.isExplicitCameraPermissionRequired(this@MainActivity) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            requestPermissions(arrayOf(Manifest.permission.CAMERA), CropImage.CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE)
+
+                        } else {
+                            CropImage.startPickImageActivity(this@MainActivity)
+                        }
+                    }
+
+                    override fun onExpiring(p0: TapsellAd?) {
+                        Toast.makeText(this@MainActivity, "expire ad", Toast.LENGTH_LONG).show()
+                        requestAd(zoneId, cacheType)
+                    }
+
+                    override fun onNoAdAvailable() {
+                        Toast.makeText(this@MainActivity, "no ad available", Toast.LENGTH_LONG).show()
+
+                    }
+
+                    override fun onError(p0: String?) {
+                        Toast.makeText(this@MainActivity, "error ad $p0", Toast.LENGTH_LONG).show()
+
+                    }
+
+                    override fun onNoNetwork() {
+                        Toast.makeText(this@MainActivity, "لطفا به اینترنت وصل شده و دوباره تلاش کنید", Toast.LENGTH_LONG).show()
+
+                    }
+                })
+
+
     }
 
 
@@ -59,19 +117,42 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         when (p0?.id) {
             R.id.get_image -> {
-                if (CropImage.isExplicitCameraPermissionRequired(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    requestPermissions(arrayOf(Manifest.permission.CAMERA), CropImage.CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE)
-
-                } else {
-                    CropImage.startPickImageActivity(this)
-                }
+                requestAd(BuildConfig.tapsellVideoZoneId, TapsellAdRequestOptions.CACHE_TYPE_STREAMED)
             }
             R.id.save -> {
 
-                imgList.reverse()
 
-                val current = System.currentTimeMillis()
-                imgList.forEachIndexed { index, bitmap -> saveBitmap(bitmap, String.format("$current-%02d.png", index)) }
+                if (tapsellAd != null) {
+
+                    val showOptions = TapsellShowOptions()
+                    showOptions.isBackDisabled = false
+                    showOptions.isImmersiveMode = true
+                    showOptions.rotationMode = TapsellShowOptions.ROTATION_UNLOCKED
+                    showOptions.isShowDialog = true
+
+                    showOptions.warnBackPressedDialogMessage = "درصورت خروج عکس ها ذخیره نمی‌شود. ویدیو را ادامه میدهید؟"
+                    showOptions.warnBackPressedDialogMessageTextColor = Color.RED
+
+                    showOptions.warnBackPressedDialogPositiveButtonText = "بله"
+                    showOptions.warnBackPressedDialogNegativeButtonText = "خیر"
+
+                    showOptions.warnBackPressedDialogPositiveButtonTextColor = Color.RED
+                    showOptions.warnBackPressedDialogNegativeButtonTextColor = Color.GREEN
+
+                    showOptions.backDisabledToastMessage = "لطفا جهت بازگشت تا انتهای پخش ویدیو صبر کنید."
+
+                    tapsellAd?.show(this@MainActivity, showOptions, object : TapsellAdShowListener {
+                        override fun onOpened(p0: TapsellAd?) {
+                            Log.e("MainActivity", "on ad opened")
+                        }
+
+                        override fun onClosed(p0: TapsellAd?) {
+                            Log.e("MainActivity", "on ad closed")
+                        }
+                    })
+
+                    this@MainActivity.tapsellAd = null
+                }
 
 
             }
