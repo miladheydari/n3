@@ -16,7 +16,14 @@ android {
 
         buildConfigField "String" ,"tapsellToken", "\"$rootProject.ext.tapsellToken\""
         buildConfigField "String" ,"tapsellVideoZoneId", "\"$rootProject.ext.tapsellVideoZoneId\""
+
+
+        resValue "string", "tapsellStandardBannerZoneId", "\"$rootProject.ext.tapsellStandardBannerZoneId\""
+
         buildConfigField "String" ,"tapsellStandardBannerZoneId", "\"$rootProject.ext.tapsellStandardBannerZoneId\""
+        buildConfigField "String" ,"tapsellVideoRewardZoneId", "\"$rootProject.ext.tapsellVideoRewardZoneId\""
+        buildConfigField "String" ,"tapsellVideoBetweenZoneId", "\"$rootProject.ext.tapsellVideoBetweenZoneId\""
+        buildConfigField "String" ,"tapsellNativeBannerZoneId", "\"$rootProject.ext.tapsellNativeBannerZoneId\""
     }
     buildTypes {
         release {

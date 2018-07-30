@@ -19,7 +19,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:fullBackupContent="@xml/backup_descriptor">
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,7 +33,7 @@
             android:theme="@style/Base.Theme.AppCompat" />
         <activity
             android:name="ir.tapsell.sdk.TapsellAdActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"></activity>
+            android:configChanges="keyboardHidden|orientation|screenSize" />
 
     </application>
 

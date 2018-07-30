@@ -2,4 +2,7 @@ ext{
    tapsellToken="algitbrbtokbrctidpcshgeqslregtemjdtdmnsefhocksqrpcqrodilrnjfafdrblmqke"
     tapsellStandardBannerZoneId="5b5ddde7e8a36d0001cca273"
     tapsellVideoZoneId="5b5df58cb3b3710001d92f6e"
+    tapsellVideoRewardZoneId="5b5eb971b3b3710001d92fa3"
+    tapsellVideoBetweenZoneId="5b5eb9bd5ea7ee00016fe481"
+    tapsellNativeBannerZoneId="5b5ed1b25ea7ee00016fe487"
 }

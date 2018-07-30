@@ -1,32 +1,31 @@
 package com.miladheydari.n3
 
 import android.Manifest
-import android.os.Build
-import android.support.v7.app.AppCompatActivity
-import android.os.Bundle
-import android.view.View
-import com.theartofdev.edmodo.cropper.CropImage
-import android.app.Activity
-import android.content.Intent
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
+import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.*
+import com.theartofdev.edmodo.cropper.CropImage
+import ir.tapsell.sdk.*
+import ir.tapsell.sdk.bannerads.TapsellBannerType
+import ir.tapsell.sdk.bannerads.TapsellBannerView
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
-import android.provider.MediaStore.Images.Media.getBitmap
-import android.graphics.drawable.BitmapDrawable
-import android.util.Log
-import ir.tapsell.sdk.*
 import java.io.OutputStream
 
 
@@ -38,6 +37,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     lateinit var etN: EditText
 
+    lateinit var tapsellBannerView: TapsellBannerView
+    lateinit var imgHelp: ImageView
+    lateinit var lblHelp: TextView
     lateinit var linearLayout: LinearLayout
 
     private var mCropImageUri: Uri? = null
@@ -48,7 +50,16 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         btnGetImage = findViewById(R.id.get_image)
+        tapsellBannerView = findViewById(R.id.banner1)
+
+        imgHelp = findViewById(R.id.help)
+        lblHelp = findViewById(R.id.lbl_help)
+
+        imgHelp.setOnClickListener(this)
+        lblHelp.setOnClickListener(this)
+
         btnSave = findViewById(R.id.save)
         btnSave.visibility = View.GONE
         btnSave.setOnClickListener(this)
@@ -57,19 +68,30 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         linearLayout = findViewById(R.id.ll)
         btnGetImage.setOnClickListener(this)
 
+        if (!isStoragePermissionGranted())
+            Toast.makeText(this, "ما برای ذخیره عکس به این دسترسی نیاز داریم", Toast.LENGTH_LONG).show()
+
         Tapsell.setRewardListener { tapsellAd, b ->
-            if (b) {
-                imgList.reverse()
 
-                val current = System.currentTimeMillis()
-                imgList.forEachIndexed { index, bitmap -> saveBitmap(bitmap, String.format("$current-%02d.png", index)) }
 
-            } else {
-                Toast.makeText(this@MainActivity, "عکس ها ذخیره نشد", Toast.LENGTH_LONG).show()
+            if (forSaving) {
+                forSaving = false
+                if (b) {
+                    imgList.reverse()
+
+                    val current = System.currentTimeMillis()
+                    imgList.forEachIndexed { index, bitmap -> saveBitmap(bitmap, String.format("$current-%02d.png", index)) }
+
+                    Toast.makeText(this@MainActivity, "عکس ها ذخیره شد", Toast.LENGTH_LONG).show()
+
+                } else {
+                    Toast.makeText(this@MainActivity, "عکس ها ذخیره نشد", Toast.LENGTH_LONG).show()
+                }
             }
 
-
         }
+        tapsellBannerView.loadAd(this, BuildConfig.tapsellStandardBannerZoneId, TapsellBannerType.BANNER_320x100)
+
 
     }
 
@@ -79,6 +101,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 object : TapsellAdRequestListener {
                     override fun onAdAvailable(p0: TapsellAd?) {
                         tapsellAd = p0
+
 
                         if (CropImage.isExplicitCameraPermissionRequired(this@MainActivity) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             requestPermissions(arrayOf(Manifest.permission.CAMERA), CropImage.CAMERA_CAPTURE_PERMISSIONS_REQUEST_CODE)
@@ -112,20 +135,84 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     }
 
+    private var forSaving: Boolean = false
 
     override fun onClick(p0: View?) {
 
         when (p0?.id) {
+            R.id.help, R.id.lbl_help -> {
+
+
+                Tapsell.requestAd(this, BuildConfig.tapsellVideoRewardZoneId,
+                        TapsellAdRequestOptions(TapsellAdRequestOptions.CACHE_TYPE_STREAMED),
+                        object : TapsellAdRequestListener {
+                            override fun onAdAvailable(p0: TapsellAd?) {
+
+
+                                val showOptions = TapsellShowOptions()
+                                showOptions.isBackDisabled = false
+                                showOptions.isImmersiveMode = true
+                                showOptions.rotationMode = TapsellShowOptions.ROTATION_UNLOCKED
+                                showOptions.isShowDialog = true
+
+                                showOptions.warnBackPressedDialogMessage = "درصورت خروج عکس ها ذخیره نمی‌شود. ویدیو را ادامه میدهید؟"
+                                showOptions.warnBackPressedDialogMessageTextColor = Color.RED
+
+                                showOptions.warnBackPressedDialogPositiveButtonText = "بله"
+                                showOptions.warnBackPressedDialogNegativeButtonText = "خیر"
+
+                                showOptions.warnBackPressedDialogPositiveButtonTextColor = Color.RED
+                                showOptions.warnBackPressedDialogNegativeButtonTextColor = Color.GREEN
+
+                                showOptions.backDisabledToastMessage = "لطفا جهت بازگشت تا انتهای پخش ویدیو صبر کنید."
+
+                                p0?.show(this@MainActivity, showOptions, object : TapsellAdShowListener {
+                                    override fun onOpened(p0: TapsellAd?) {
+
+//                                        Toast.makeText(this@MainActivity, "open", Toast.LENGTH_LONG).show()
+                                    }
+
+                                    override fun onClosed(p0: TapsellAd?) {
+//                                        Toast.makeText(this@MainActivity, "close", Toast.LENGTH_LONG).show()
+                                    }
+                                })
+
+                            }
+
+                            override fun onExpiring(p0: TapsellAd?) {
+                                Toast.makeText(this@MainActivity, "expire ad", Toast.LENGTH_LONG).show()
+
+                            }
+
+                            override fun onNoAdAvailable() {
+                                Toast.makeText(this@MainActivity, "no ad available", Toast.LENGTH_LONG).show()
+
+                            }
+
+                            override fun onError(p0: String?) {
+                                Toast.makeText(this@MainActivity, "error ad $p0", Toast.LENGTH_LONG).show()
+
+                            }
+
+                            override fun onNoNetwork() {
+                                Toast.makeText(this@MainActivity, "لطفا به اینترنت وصل شده و دوباره تلاش کنید", Toast.LENGTH_LONG).show()
+
+                            }
+                        })
+
+
+            }
             R.id.get_image -> {
-                requestAd(BuildConfig.tapsellVideoZoneId, TapsellAdRequestOptions.CACHE_TYPE_STREAMED)
+                requestAd(BuildConfig.tapsellVideoRewardZoneId, TapsellAdRequestOptions.CACHE_TYPE_STREAMED)
             }
             R.id.save -> {
 
+                forSaving = true
 
                 if (tapsellAd != null) {
 
                     val showOptions = TapsellShowOptions()
-                    showOptions.isBackDisabled = false
+                    showOptions.isBackDisabled = true
                     showOptions.isImmersiveMode = true
                     showOptions.rotationMode = TapsellShowOptions.ROTATION_UNLOCKED
                     showOptions.isShowDialog = true
@@ -143,15 +230,17 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
                     tapsellAd?.show(this@MainActivity, showOptions, object : TapsellAdShowListener {
                         override fun onOpened(p0: TapsellAd?) {
-                            Log.e("MainActivity", "on ad opened")
+
+//                            Toast.makeText(this@MainActivity, "open", Toast.LENGTH_LONG).show()
                         }
 
                         override fun onClosed(p0: TapsellAd?) {
-                            Log.e("MainActivity", "on ad closed")
+//                            Toast.makeText(this@MainActivity, "close", Toast.LENGTH_LONG).show()
+
+                            forSaving = false
                         }
                     })
 
-                    this@MainActivity.tapsellAd = null
                 }
 
 
@@ -159,6 +248,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         }
 
+    }
+
+    private fun isStoragePermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v("N3", "Permission is granted")
+                true
+            } else {
+
+                Log.v("N3", "Permission is revoked")
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 5)
+                false
+            }
+        } else { //permission is automatically granted on sdk<23 upon installation
+            Log.v("N3", "Permission is granted")
+            true
+        }
     }
 
     private fun saveBitmap(bitmap: Bitmap, filename: String) {
@@ -249,7 +356,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         imgList.clear()
         linearLayout.removeAllViews()
 
-        val l = bitmap?.width?.div(3)?.toInt()
+        val l = bitmap?.width?.div(3)
 
         var yCoord = 0
         for (i in 1..y) {
@@ -299,7 +406,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             }
         }
 
-        if (requestCode == -5) {
+        if (requestCode == 5) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 btnSave.visibility = View.VISIBLE
             } else {
